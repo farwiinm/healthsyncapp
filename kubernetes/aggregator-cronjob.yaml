@@ -1,0 +1,64 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: aggregator-service
+  labels:
+    app: aggregator-service
+spec:
+  schedule: "0 0 * * *" # Run daily at midnight
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: aggregator-service-account
+          containers:
+          - name: aggregator-service
+            image: 640168457618.dkr.ecr.us-east-2.amazonaws.com/healthsync/aggregator-service:latest
+            imagePullPolicy: Always
+            env:
+            - name: PG_HOST
+              value: "postgresql"
+            - name: PG_PORT
+              value: "5432"
+            - name: PG_DATABASE
+              value: "healthsync"
+            - name: PG_USER
+              value: "healthsync_user"
+            - name: PG_PASSWORD
+              valueFrom:
+                  secretKeyRef:
+                    name: db-secrets
+                    key: pg-password
+            - name: REDSHIFT_CLUSTER_ID
+              value: "healthsync-cluster"
+            - name: REDSHIFT_DB
+              value: "dev"
+            - name: REDSHIFT_USER
+              valueFrom:
+                  secretKeyRef:
+                    name: redshift-secrets
+                    key: redshift-user
+            - name: REDSHIFT_PASSWORD
+              valueFrom:
+                  secretKeyRef:
+                    name: redshift-secrets
+                    key: redshift-password
+            - name: REDSHIFT_REGION
+              value: "us-east-2"
+            - name: REDSHIFT_TABLE
+              value: "aggregated_metrics"
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: aws-secrets
+                  key: access-key-id
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: aws-secrets
+                  key: secret-access-key
+            - name: AWS_REGION
+              value: "us-east-2"
+          restartPolicy: OnFailure
+          imagePullSecrets:
+          - name: ecr-secret
