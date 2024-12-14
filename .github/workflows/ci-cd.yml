@@ -5,49 +5,51 @@ on:
     branches:
       - main
 
+env:
+  AWS_REGION: us-east-2
+  ECR_AGGREGATOR: ${{ secrets.ECR_REPOSITORY_URI_AGGREGATOR }}
+  ECR_APPOINTMENT: ${{ secrets.ECR_REPOSITORY_URI_APPOINTMENT }}
+  ECR_NOTIFICATION: ${{ secrets.ECR_REPOSITORY_URI_NOTIFICATION }}
+  ECR_PATIENT: ${{ secrets.ECR_REPOSITORY_URI_PATIENT }}
+
 jobs:
   build-and-push:
     name: Build and Push Docker Images
     runs-on: ubuntu-22.04
 
     steps:
-      # Step 1: Checkout code
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Step 2: Configure AWS Credentials
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCES_KEY_ID }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-2
+          aws-region: $AWS_REGION
 
-      # Step 3: Log in to Amazon ECR
       - name: Log in to Amazon ECR
-        id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
-      # Step 4: Build and Push Docker Images for each microservice
       - name: Build and Push Aggregator CronJob
         run: |
-          docker build -t ${{ secrets.ECR_REPOSITORY_URI_AGGREGATOR }}:latest ./microservices/aggregator-service/src
-          docker push ${{ secrets.ECR_REPOSITORY_URI_AGGREGATOR }}:latest
+          docker build -t $ECR_AGGREGATOR:latest ./microservices/aggregator-service
+          docker push $ECR_AGGREGATOR:latest
 
       - name: Build and Push Appointment Microservice
         run: |
-          docker build -t ${{ secrets.ECR_REPOSITORY_URI_APPOINTMENT }}:latest ./microservices/appointment-scheduling-service
-          docker push ${{ secrets.ECR_REPOSITORY_URI_APPOINTMENT }}:latest
+          docker build -t $ECR_APPOINTMENT:latest ./microservices/appointment-scheduling-service
+          docker push $ECR_APPOINTMENT:latest
 
       - name: Build and Push Notification Microservice
         run: |
-          docker build -t ${{ secrets.ECR_REPOSITORY_URI_NOTIFICATION }}:latest ./microservices/notification-service
-          docker push ${{ secrets.ECR_REPOSITORY_URI_NOTIFICATION }}:latest
+          docker build -t $ECR_NOTIFICATION:latest ./microservices/notification-service
+          docker push $ECR_NOTIFICATION:latest
 
       - name: Build and Push Patient Microservice
         run: |
-          docker build -t ${{ secrets.ECR_REPOSITORY_URI_PATIENT }}:latest ./microservices/patient-record-service
-          docker push ${{ secrets.ECR_REPOSITORY_URI_PATIENT }}:latest
+          docker build -t $ECR_PATIENT:latest ./microservices/patient-record-service
+          docker push $ECR_PATIENT:latest
 
   test:
     name: Run Tests
@@ -55,34 +57,15 @@ jobs:
     needs: build-and-push
 
     steps:
-      # Step 1: Checkout code
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Step 2: Install dependencies and run tests for each microservice
-      - name: Run Tests for Aggregator CronJob
+      - name: Run Tests for Microservices
         run: |
-          cd ./microservices/aggregator-service
-          pip install -r requirements.txt || true
-          pytest tests || true
-
-      - name: Run Tests for Appointment Microservice
-        run: |
-          cd ./microservices/appointment-scheduling-service
-          pip install -r requirements.txt || true
-          pytest tests || true
-
-      - name: Run Tests for Notification Microservice
-        run: |
-          cd ./microservices/notification-service
-          pip install -r requirements.txt || true
-          pytest tests || true
-
-      - name: Run Tests for Patient Microservice
-        run: |
-          cd ./microservices/patient-record-service
-          pip install -r requirements.txt || true
-          pytest tests || true
+          cd ./microservices/aggregator-service && pytest tests
+          cd ../appointment-scheduling-service && pytest tests
+          cd ../notification-service && pytest tests
+          cd ../patient-record-service && pytest tests
 
   deploy:
     name: Deploy to Kubernetes
@@ -90,23 +73,17 @@ jobs:
     needs: test
 
     steps:
-      # Step 1: Checkout code
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Step 2: Set up kubectl
       - name: Set up kubectl
         uses: azure/setup-kubectl@v3
         with:
           version: 'latest'
 
-      # Step 3: Update ConfigMap for Aggregator Image
-      - name: Update Aggregator ConfigMap
-        run: |
-          kubectl create configmap aggregator-config \
-            --from-literal=image-uri=${{ secrets.ECR_REPOSITORY_URI_AGGREGATOR }} --dry-run=client -o yaml | kubectl apply -f -
+      - name: Validate Kubernetes Manifests
+        run: kubectl apply --dry-run=client -f ./kubernetes/
 
-      # Step 4: Apply Kubernetes manifests for each microservice
       - name: Deploy Aggregator CronJob
         run: |
           kubectl apply -f ./kubernetes/aggregator-cronjob.yaml
