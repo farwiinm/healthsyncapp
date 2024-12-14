@@ -31,7 +31,7 @@ jobs:
       # Step 4: Build and Push Docker Images for each microservice
       - name: Build and Push Aggregator CronJob
         run: |
-          docker build -t ${{ secrets.ECR_REPOSITORY_URI_AGGREGATOR }}:latest .
+          docker build -t ${{ secrets.ECR_REPOSITORY_URI_AGGREGATOR }}:latest ./microservices/aggregator-service/src
           docker push ${{ secrets.ECR_REPOSITORY_URI_AGGREGATOR }}:latest
 
       - name: Build and Push Appointment Microservice
