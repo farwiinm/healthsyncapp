@@ -1,0 +1,6 @@
+flask
+flask-sqlalchemy
+flask-migrate
+marshmallow
+apscheduler
+psycopg2-binary

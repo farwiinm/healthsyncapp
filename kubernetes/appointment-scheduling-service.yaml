@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: appointment-scheduling-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: appointment-scheduling
+  template:
+    metadata:
+      labels:
+        app: appointment-scheduling
+    spec:
+      containers:
+      - name: appointment-scheduling
+        image: 640168457618.dkr.ecr.us-east-2.amazonaws.com/healthsync/appointment-scheduling-service:latest
+        ports:
+        - containerPort: 5001
+        env:
+        - name: PG_HOST
+          value: "postgresql"
+      imagePullSecrets:
+      - name: ecr-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: appointment-scheduling-service
+spec:
+  selector:
+    app: appointment-scheduling
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 5001
+  type: ClusterIP
