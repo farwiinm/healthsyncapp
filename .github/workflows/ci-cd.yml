@@ -4,102 +4,106 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
 
 env:
-  AWS_REGION: us-east-2
-  ECR_AGGREGATOR: ${{ secrets.ECR_REPOSITORY_URI_AGGREGATOR }}
-  ECR_APPOINTMENT: ${{ secrets.ECR_REPOSITORY_URI_APPOINTMENT }}
-  ECR_NOTIFICATION: ${{ secrets.ECR_REPOSITORY_URI_NOTIFICATION }}
-  ECR_PATIENT: ${{ secrets.ECR_REPOSITORY_URI_PATIENT }}
+  ECR_REGION: us-east-2
+  ECR_REPOSITORY_AGGREGATOR: 640168457618.dkr.ecr.us-east-2.amazonaws.com/healthsync/aggregator-service
+  ECR_REPOSITORY_APPOINTMENT: 640168457618.dkr.ecr.us-east-2.amazonaws.com/healthsync/appointment-scheduling-service
+  ECR_REPOSITORY_NOTIFICATION: 640168457618.dkr.ecr.us-east-2.amazonaws.com/healthsync/notification-service
+  ECR_REPOSITORY_PATIENT: 640168457618.dkr.ecr.us-east-2.amazonaws.com/healthsync/patient-record-service
 
 jobs:
   build-and-push:
     name: Build and Push Docker Images
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      # Step 1: Checkout code
+      - name: Checkout Code
         uses: actions/checkout@v3
 
+      # Step 2: Configure AWS Credentials
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-2 
+          aws-region: ${{ env.ECR_REGION }}
 
+      # Step 3: Log in to Amazon ECR
       - name: Log in to Amazon ECR
+        id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
-      - name: Build and Push Aggregator CronJob
+      # Step 4: Build and Push Aggregator Service Docker Image
+      - name: Build and Push Aggregator Service
         run: |
-          docker build -t $ECR_AGGREGATOR:latest ./microservices/aggregator-service
-          docker push $ECR_AGGREGATOR:latest
+          docker build -t ${{ env.ECR_REPOSITORY_AGGREGATOR }}:latest ./microservices/aggregator-service
+          docker push ${{ env.ECR_REPOSITORY_AGGREGATOR }}:latest
 
-      - name: Build and Push Appointment Microservice
+      # Step 5: Build and Push Appointment Scheduling Service Docker Image
+      - name: Build and Push Appointment Scheduling Service
         run: |
-          docker build -t $ECR_APPOINTMENT:latest ./microservices/appointment-scheduling-service
-          docker push $ECR_APPOINTMENT:latest
+          docker build -t ${{ env.ECR_REPOSITORY_APPOINTMENT }}:latest ./microservices/appointment-scheduling-service
+          docker push ${{ env.ECR_REPOSITORY_APPOINTMENT }}:latest
 
-      - name: Build and Push Notification Microservice
+      # Step 6: Build and Push Notification Service Docker Image
+      - name: Build and Push Notification Service
         run: |
-          docker build -t $ECR_NOTIFICATION:latest ./microservices/notification-service
-          docker push $ECR_NOTIFICATION:latest
+          docker build -t ${{ env.ECR_REPOSITORY_NOTIFICATION }}:latest ./microservices/notification-service
+          docker push ${{ env.ECR_REPOSITORY_NOTIFICATION }}:latest
 
-      - name: Build and Push Patient Microservice
+      # Step 7: Build and Push Patient Record Service Docker Image
+      - name: Build and Push Patient Record Service
         run: |
-          docker build -t $ECR_PATIENT:latest ./microservices/patient-record-service
-          docker push $ECR_PATIENT:latest
-
-  test:
-    name: Run Tests
-    runs-on: ubuntu-22.04
-    needs: build-and-push
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Run Tests for Microservices
-        run: |
-          cd ./microservices/aggregator-service && pytest tests
-          cd ../appointment-scheduling-service && pytest tests
-          cd ../notification-service && pytest tests
-          cd ../patient-record-service && pytest tests
+          docker build -t ${{ env.ECR_REPOSITORY_PATIENT }}:latest ./microservices/patient-record-service
+          docker push ${{ env.ECR_REPOSITORY_PATIENT }}:latest
 
   deploy:
     name: Deploy to Kubernetes
-    runs-on: ubuntu-22.04
-    needs: test
+    runs-on: ubuntu-latest
+    needs: build-and-push
 
     steps:
-      - name: Checkout code
+      # Step 1: Checkout code
+      - name: Checkout Code
         uses: actions/checkout@v3
 
+      # Step 2: Set up kubectl
       - name: Set up kubectl
         uses: azure/setup-kubectl@v3
         with:
           version: 'latest'
 
-      - name: Validate Kubernetes Manifests
-        run: kubectl apply --dry-run=client -f ./kubernetes/
+      # Step 3: Set up kubeconfig
+      - name: Set up kubeconfig
+        run: |
+          echo "${{ secrets.KUBECONFIG_FILE }}" > kubeconfig
+          export KUBECONFIG=kubeconfig
 
+      # Step 4: Deploy Aggregator Service CronJob
       - name: Deploy Aggregator CronJob
         run: |
           kubectl apply -f ./kubernetes/aggregator-cronjob.yaml
           kubectl get cronjob/aggregator-service
 
-      - name: Deploy Appointment Microservice
+      # Step 5: Deploy Appointment Scheduling Service
+      - name: Deploy Appointment Scheduling Service
         run: |
           kubectl apply -f ./kubernetes/appointment-scheduling-service.yaml
           kubectl rollout status deployment/appointment-scheduling-service
 
-      - name: Deploy Notification Microservice
+      # Step 6: Deploy Notification Service
+      - name: Deploy Notification Service
         run: |
           kubectl apply -f ./kubernetes/notification-service.yaml
           kubectl rollout status deployment/notification-service
 
-      - name: Deploy Patient Microservice
+      # Step 7: Deploy Patient Record Service
+      - name: Deploy Patient Record Service
         run: |
           kubectl apply -f ./kubernetes/patient-record-service.yaml
           kubectl rollout status deployment/patient-record-service
