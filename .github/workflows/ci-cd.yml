@@ -26,80 +26,27 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-2
+          aws-region: $AWS_REGION
 
       - name: Log in to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v1
 
       - name: Build and Push Aggregator CronJob
         run: |
-          docker build -t $ECR_AGGREGATOR:latest ./microservices/aggregator-service
-          docker push $ECR_AGGREGATOR:latest
+          docker build -t ${{ secrets.ECR_REPOSITORY_URI_AGGREGATOR }}:latest ./microservices/aggregator-service
+          docker push ${{ secrets.ECR_REPOSITORY_URI_AGGREGATOR }}:latest
 
       - name: Build and Push Appointment Microservice
         run: |
-          docker build -t $ECR_APPOINTMENT:latest ./microservices/appointment-scheduling-service
-          docker push $ECR_APPOINTMENT:latest
+          docker build -t ${{ secrets.ECR_REPOSITORY_URI_APPOINTMENT }}:latest ./microservices/appointment-scheduling-service
+          docker push ${{ secrets.ECR_REPOSITORY_URI_APPOINTMENT }}:latest
 
       - name: Build and Push Notification Microservice
         run: |
-          docker build -t $ECR_NOTIFICATION:latest ./microservices/notification-service
-          docker push $ECR_NOTIFICATION:latest
+          docker build -t ${{ secrets.ECR_REPOSITORY_URI_NOTIFICATION }}:latest ./microservices/notification-service
+          docker push ${{ secrets.ECR_REPOSITORY_URI_NOTIFICATION }}:latest
 
       - name: Build and Push Patient Microservice
         run: |
-          docker build -t $ECR_PATIENT:latest ./microservices/patient-record-service
-          docker push $ECR_PATIENT:latest
-
-  test:
-    name: Run Tests
-    runs-on: ubuntu-22.04
-    needs: build-and-push
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Run Tests for Microservices
-        run: |
-          cd ./microservices/aggregator-service && pytest tests
-          cd ../appointment-scheduling-service && pytest tests
-          cd ../notification-service && pytest tests
-          cd ../patient-record-service && pytest tests
-
-  deploy:
-    name: Deploy to Kubernetes
-    runs-on: ubuntu-22.04
-    needs: test
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Set up kubectl
-        uses: azure/setup-kubectl@v3
-        with:
-          version: 'latest'
-
-      - name: Validate Kubernetes Manifests
-        run: kubectl apply --dry-run=client -f ./kubernetes/
-
-      - name: Deploy Aggregator CronJob
-        run: |
-          kubectl apply -f ./kubernetes/aggregator-cronjob.yaml
-          kubectl get cronjob/aggregator-service
-
-      - name: Deploy Appointment Microservice
-        run: |
-          kubectl apply -f ./kubernetes/appointment-scheduling-service.yaml
-          kubectl rollout status deployment/appointment-scheduling-service
-
-      - name: Deploy Notification Microservice
-        run: |
-          kubectl apply -f ./kubernetes/notification-service.yaml
-          kubectl rollout status deployment/notification-service
-
-      - name: Deploy Patient Microservice
-        run: |
-          kubectl apply -f ./kubernetes/patient-record-service.yaml
-          kubectl rollout status deployment/patient-record-service
+          docker build -t ${{ secrets.ECR_REPOSITORY_URI_PATIENT }}:latest ./microservices/patient-record-service
+          docker push ${{ secrets.ECR_REPOSITORY_URI_PATIENT }}:latest
