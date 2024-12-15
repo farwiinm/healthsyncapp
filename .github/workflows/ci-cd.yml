@@ -66,42 +66,51 @@ jobs:
     name: Deploy to Kubernetes
     runs-on: self-hosted
     steps:
+      # Step 1: Checkout code
       - name: Checkout Code
         uses: actions/checkout@v3
-  
+
+      # Step 2: Set up kubectl
       - name: Set up kubectl
         uses: azure/setup-kubectl@v3
         with:
           version: 'latest'
-  
+
+      # Step 3: Set up kubeconfig (Windows-Compatible)
       - name: Set up kubeconfig
         run: |
           echo "${{ secrets.KUBECONFIG_FILE }}" > kubeconfig
-          export KUBECONFIG=$PWD/kubeconfig
-  
+          if ($Env:OS -eq "Windows_NT") {
+            $Env:KUBECONFIG = "$PWD\kubeconfig"
+          } else {
+            export KUBECONFIG=$PWD/kubeconfig
+          }
+
+      # Step 4: Validate kubectl connectivity
       - name: Validate kubectl connectivity
         run: |
           kubectl cluster-info
           kubectl get nodes
-  
+
+      # Step 5: Deploy Aggregator CronJob
       - name: Deploy Aggregator CronJob
         run: |
-          kubectl apply -f ./kubernetes/aggregator-cronjob.yaml --validate=false --v=8
+          kubectl apply -f ./kubernetes/aggregator-cronjob.yaml --validate=false
           kubectl get cronjob/aggregator-service
 
-      # Step 5: Deploy Appointment Scheduling Service
+      # Step 6: Deploy Appointment Scheduling Service
       - name: Deploy Appointment Scheduling Service
         run: |
           kubectl apply -f ./kubernetes/appointment-scheduling-service.yaml
           kubectl rollout status deployment/appointment-scheduling-service
 
-      # Step 6: Deploy Notification Service
+      # Step 7: Deploy Notification Service
       - name: Deploy Notification Service
         run: |
           kubectl apply -f ./kubernetes/notification-service.yaml
           kubectl rollout status deployment/notification-service
 
-      # Step 7: Deploy Patient Record Service
+      # Step 8: Deploy Patient Record Service
       - name: Deploy Patient Record Service
         run: |
           kubectl apply -f ./kubernetes/patient-record-service.yaml
