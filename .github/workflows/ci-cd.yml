@@ -127,7 +127,7 @@ jobs:
           
       # Step 11: Run Data Aggregation and Upload to Redshift
       - name: Run Data Aggregation Script
-        working-directory: ./microservices/aggregator-service
+        working-directory: ./microservices/aggregator-service/src
         run: |
           python app.py
 
