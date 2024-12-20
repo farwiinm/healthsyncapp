@@ -79,13 +79,18 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.ECR_REGION }}
 
-      # Step 3: Refresh ECR Authentication and Update Secret
+      # Step 3: Refresh ECR Secret
       - name: Refresh ECR Secret
+        shell: pwsh
         run: |
-          kubectl delete secret ecr-secret || true
-          kubectl create secret docker-registry ecr-secret \
-            --docker-server=640168457618.dkr.ecr.us-east-2.amazonaws.com \
-            --docker-username=AWS \
+          try {
+            kubectl delete secret ecr-secret -n default
+          } catch {
+            Write-Host "Secret does not exist or could not be deleted, continuing..."
+          }
+          kubectl create secret docker-registry ecr-secret `
+            --docker-server=640168457618.dkr.ecr.us-east-2.amazonaws.com `
+            --docker-username=AWS `
             --docker-password=$(aws ecr get-login-password --region us-east-2)
 
       # Step 4: Set up kubectl
