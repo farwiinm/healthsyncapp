@@ -67,11 +67,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout code
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      # Step 2: Configure AWS Credentials
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
@@ -79,7 +77,17 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.ECR_REGION }}
 
-      # Step 3: Refresh ECR Secret
+      - name: Set up kubeconfig
+        run: |
+          echo "${{ secrets.KUBECONFIG_FILE }}" > kubeconfig
+          export KUBECONFIG=$PWD/kubeconfig
+          chmod 600 kubeconfig
+
+      - name: Validate Kubernetes Cluster
+        run: |
+          kubectl cluster-info
+          kubectl get nodes
+
       - name: Refresh ECR Secret
         run: |
           kubectl delete secret ecr-secret || true
@@ -88,25 +96,6 @@ jobs:
             --docker-username=AWS \
             --docker-password=$(aws ecr get-login-password --region us-east-2)
 
-      # Step 4: Set up kubectl
-      - name: Set up kubectl
-        uses: azure/setup-kubectl@v3
-        with:
-          version: 'latest'
-
-      # Step 5: Set up kubeconfig
-      - name: Set up kubeconfig
-        run: |
-          echo "${{ secrets.KUBECONFIG_FILE }}" > kubeconfig
-          export KUBECONFIG=$PWD/kubeconfig
-
-      # Step 6: Validate kubectl connectivity
-      - name: Validate kubectl connectivity
-        run: |
-          kubectl cluster-info
-          kubectl get nodes
-
-      # Step 7: Deploy Aggregator CronJob
       - name: Deploy Aggregator CronJob
         run: |
           kubectl apply -f ./kubernetes/aggregator-cronjob.yaml --validate=false
