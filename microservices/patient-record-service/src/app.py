@@ -20,10 +20,6 @@ db.init_app(app)
 migrate = Migrate(app, db)
 
 # Routes
-@app.route('/health', methods=['GET'])
-def health_check():
-    return jsonify({'status': 'Patient Record Service is operational'}), 200
-
 @app.route('/patients', methods=['POST'])
 def create_patient():
     data = request.json
