@@ -4,7 +4,7 @@ import pandas as pd
 from io import StringIO
 
 # PostgreSQL connection details
-PG_HOST = 'postgresql'
+PG_HOST = '10.102.37.163'
 PG_PORT = '5432'
 PG_DATABASE = 'healthsync'
 PG_USER = 'healthsync_user'
