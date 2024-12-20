@@ -153,8 +153,13 @@ jobs:
               Start-Sleep -Seconds 60
             }
           }
+      # Step 12: Notify for QuickSight Visualization
+      - name: Notify for QuickSight Dashboard Check
+        run: |
+          echo "Data has been uploaded to Redshift."
+          echo "Please check your AWS QuickSight dashboard to confirm that the metrics have been visualized."
 
       # Step 9: Wait for 12 Hours
       - name: Wait for Services to Run
         run: sleep 43200 # 12 hours in seconds
-    
+  
