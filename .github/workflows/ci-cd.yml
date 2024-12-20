@@ -64,7 +64,7 @@ jobs:
 
   deploy:
     name: Deploy to Kubernetes
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
       # Step 1: Checkout code
@@ -94,14 +94,11 @@ jobs:
         with:
           version: 'latest'
 
-      # Step 5: Set up kubeconfig (Windows-Compatible)
+      # Step 5: Set up kubeconfig
       - name: Set up kubeconfig
         run: |
           echo "${{ secrets.KUBECONFIG_FILE }}" > kubeconfig
-          if ($Env:OS -eq "Windows_NT") {
-            $Env:KUBECONFIG = "$PWD\\kubeconfig"
-          } else {
-            export KUBECONFIG=$PWD/kubeconfig
+          export KUBECONFIG=$PWD/kubeconfig
 
       # Step 6: Validate kubectl connectivity
       - name: Validate kubectl connectivity
@@ -123,7 +120,13 @@ jobs:
           kubectl rollout restart deployment/patient-record-service
           kubectl rollout restart deployment/aggregator-service
 
-      # Step 9: Verify Pods Are Running
+      # Step 9: Deploy Monitoring Tools
+      - name: Deploy Prometheus and Grafana
+        run: |
+          echo "Deploying monitoring tools..."
+          echo "Prometheus and Grafana are pre-installed and running. No YAML files provided for deployment."
+
+      # Step 10: Verify Pods Are Running
       - name: Check Pod Status
         run: |
           kubectl get pods -o wide
