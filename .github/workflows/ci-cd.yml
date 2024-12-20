@@ -125,17 +125,27 @@ jobs:
           $response = Invoke-RestMethod -Uri http://127.0.0.1:3000
           if ($response) { echo "Grafana is running." } else { throw "Grafana is not running." }
           
-      # Validate Aggregator CronJob
-      - name: Validate Aggregator CronJob
-        run: |
-          kubectl get cronjob/aggregator-service
-          kubectl describe cronjob/aggregator-service
-
       - name: Test Aggregator Job Execution
         run: |
+          echo "Creating manual aggregator job..."
           kubectl create job --from=cronjob/aggregator-service manual-aggregator-job
+      
+          echo "Waiting for the manual aggregator job pod to be ready..."
+          kubectl wait --for=condition=ready pod -l job-name=manual-aggregator-job --timeout=300s
+      
+          echo "Fetching logs from the manual aggregator job..."
           kubectl logs -f job/manual-aggregator-job
-          kubectl delete job manual-aggregator-job
+      
+          echo "Deleting the manual aggregator job..."
+          kubectl delete job manual-aggregator-job --ignore-not-found=true
+      
+      - name: Verify S3 Data Upload
+        run: |
+          echo "Verifying S3 data upload..."
+          for i in {1..5}; do
+            echo "Checking S3 for uploaded data (Attempt $i)...";
+            aws s3 ls s3://healthsync-staging-data/ --region us-east-2 && break || sleep 60;
+          done
 
       # Step 9: Wait for 12 Hours
       - name: Wait for Services to Run
