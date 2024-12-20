@@ -116,13 +116,14 @@ jobs:
           kubectl apply -f ./kubernetes/patient-record-service.yaml
           kubectl rollout status deployment/patient-record-service
 
-      # Step 9: Wait for 12 Hours
-      - name: Wait for Services to Run
-        run: sleep 43200 # 12 hours in seconds
-     
       # Step 10: Validate Monitoring Tools
       - name: Validate Prometheus and Grafana
         run: |
           echo "Checking Prometheus and Grafana availability..."
           curl -s http://127.0.0.1:9090/api/v1/status/buildinfo && echo "Prometheus is running."
           curl -s http://127.0.0.1:3000 && echo "Grafana is running."
+
+      # Step 9: Wait for 12 Hours
+      - name: Wait for Services to Run
+        run: sleep 43200 # 12 hours in seconds
+    
