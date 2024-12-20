@@ -116,3 +116,7 @@ jobs:
         run: |
           kubectl apply -f ./kubernetes/patient-record-service.yaml
           kubectl rollout status deployment/patient-record-service
+
+      # Step 9: Wait for 12 Hours
+      - name: Wait for Services to Run
+        run: sleep 43200 # 12 hours in seconds
