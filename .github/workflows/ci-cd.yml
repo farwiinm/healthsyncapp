@@ -141,11 +141,18 @@ jobs:
       
       - name: Verify S3 Data Upload
         run: |
-          echo "Verifying S3 data upload..."
-          for i in {1..5}; do
-            echo "Checking S3 for uploaded data (Attempt $i)...";
-            aws s3 ls s3://healthsync-staging-data/ --region us-east-2 && break || sleep 60;
-          done
+          Write-Output "Verifying S3 data upload..."
+          for ($i = 1; $i -le 5; $i++) {
+            Write-Output "Checking S3 for uploaded data (Attempt $i)..."
+            try {
+              aws s3 ls s3://healthsync-staging-data/ --region us-east-2
+              Write-Output "Data found in S3!"
+              break
+            } catch {
+              Write-Output "Data not found. Retrying in 60 seconds..."
+              Start-Sleep -Seconds 60
+            }
+          }
 
       # Step 9: Wait for 12 Hours
       - name: Wait for Services to Run
