@@ -125,11 +125,17 @@ jobs:
           $response = Invoke-RestMethod -Uri http://127.0.0.1:3000
           if ($response) { echo "Grafana is running." } else { throw "Grafana is not running." }
           
-      # Step 11: Run Data Aggregation and Upload to Redshift
-      - name: Run Data Aggregation Script
-        working-directory: ./microservices/aggregator-service/src
+      # Validate Aggregator CronJob
+      - name: Validate Aggregator CronJob
         run: |
-          python app.py
+          kubectl get cronjob/aggregator-service
+          kubectl describe cronjob/aggregator-service
+
+      - name: Test Aggregator Job Execution
+        run: |
+          kubectl create job --from=cronjob/aggregator-service manual-aggregator-job
+          kubectl logs -f job/manual-aggregator-job
+          kubectl delete job manual-aggregator-job
 
       # Step 9: Wait for 12 Hours
       - name: Wait for Services to Run
