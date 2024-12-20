@@ -124,7 +124,12 @@ jobs:
       
           $response = Invoke-RestMethod -Uri http://127.0.0.1:3000
           if ($response) { echo "Grafana is running." } else { throw "Grafana is not running." }
-
+          
+      # Step 11: Run Data Aggregation and Upload to Redshift
+      - name: Run Data Aggregation Script
+        working-directory: ./microservices/aggregator-service
+        run: |
+          python app.py
 
       # Step 9: Wait for 12 Hours
       - name: Wait for Services to Run
